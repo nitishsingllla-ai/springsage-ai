@@ -42,7 +42,7 @@ interface Props {
   interactive?: boolean;
   measuring?: boolean;
   onMeasure?: (km: number) => void;
-  selectedId?: string;
+  selectedId?: string | undefined;
   className?: string;
   mapRef?: (api: { recenter: () => void; zoomIn: () => void; zoomOut: () => void }) => void;
 }
