@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Play, RotateCcw, Info, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
@@ -40,6 +40,7 @@ function Analysis() {
     toast.success(`Assessment complete · ${high} sq km High/Very High potential`);
   };
 
+  useEffect(() => { setModel(analysis.model); setW(analysis.weights); }, [region]); // eslint-disable-line react-hooks/exhaustive-deps
   const areaTotal = analysis.areaByClass.reduce((a, b) => a + b, 0);
 
   return (
@@ -107,6 +108,9 @@ function Analysis() {
               <Button className="flex-1" onClick={run} disabled={running}>{running ? <Loader2 className="animate-spin" /> : <Play />}Run Recharge Assessment</Button>
               <Button variant="outline" size="icon" onClick={() => setW(DEFAULT_WEIGHTS)} aria-label="Reset weights"><RotateCcw /></Button>
             </div>
+            {!running && (model !== analysis.model || JSON.stringify(w) !== JSON.stringify(analysis.weights)) && (
+              <p className="mt-3 rounded-md bg-warning/10 p-2 text-[11px] text-warning-foreground">You've changed settings. The map and statistics still show the last run — press Run to update them.</p>
+            )}
             <p className="mt-3 text-[11px] text-muted-foreground">Last run: {new Date(analysis.runAt).toLocaleString()} · {analysis.model === "ahp" ? "AHP" : "RF"}</p>
           </Panel>
           <Button variant="outline" className="w-full" asChild><Link to="/interventions">Translate zones into interventions →</Link></Button>
