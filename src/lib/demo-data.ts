@@ -258,6 +258,15 @@ export interface AnalysisResult {
   runAt: string;
 }
 
+export const CLASS_BREAKS = [0.62, 0.56, 0.48, 0.4];
+export function classOf(score: number) {
+  const b = CLASS_BREAKS;
+  return score >= b[0] ? 0 : score >= b[1] ? 1 : score >= b[2] ? 2 : score >= b[3] ? 3 : 4;
+}
+export function cellIndexAt(id: RegionId, lat: number, lng: number) {
+  return getGrid(id).findIndex((c) => lat >= c.lat && lat < c.lat + c.dLat && lng >= c.lng && lng < c.lng + c.dLng);
+}
+
 export function runRecharge(regionId: RegionId, model: "ahp" | "rf", weights: Weights): AnalysisResult {
   const cells = getGrid(regionId);
   const total = Object.values(weights).reduce((a, b) => a + b, 0) || 1;
@@ -268,23 +277,32 @@ export function runRecharge(regionId: RegionId, model: "ahp" | "rf", weights: We
     if (model === "rf") s = s * 0.8 + 0.2 * (c.f.lineament * c.f.slope); // nonlinear interaction
     return s;
   });
-  const sorted = [...scores].sort((a, b) => b - a);
-  const q = [0.12, 0.3, 0.6, 0.85].map((p) => sorted[Math.floor(p * sorted.length)]);
-  const classes = scores.map((s) => (s >= q[0] ? 0 : s >= q[1] ? 1 : s >= q[2] ? 2 : s >= q[3] ? 3 : 4));
+  // Fixed score breaks, so zone areas respond to weight and model changes.
+  const classes = scores.map((s) => classOf(s));
   const cellArea = REGIONS[regionId].areaSqKm / cells.length;
   const areaByClass = [0, 0, 0, 0, 0];
   classes.forEach((c) => (areaByClass[c] += cellArea));
-  const importance = FACTORS.map((f) => {
+  const raw = FACTORS.map((f) => {
     const base = weights[f.key] / total;
-    const v = model === "rf" ? base * 0.7 + (f.key === "lineament" || f.key === "slope" ? 0.06 : 0.02) : base;
-    return { key: f.key, label: f.label, value: Math.round(v * 1000) / 10 };
-  }).sort((a, b) => b.value - a.value);
+    return { key: f.key, label: f.label, v: model === "rf" ? base * 0.7 + (f.key === "lineament" || f.key === "slope" ? 0.06 : 0.02) : base };
+  });
+  const rawSum = raw.reduce((a, b) => a + b.v, 0) || 1;
+  const importance = raw.map((r) => ({ key: r.key, label: r.label, value: Math.round((r.v / rawSum) * 1000) / 10 })).sort((a, b) => b.value - a.value);
+  // Validation against known (demo) spring locations
+  const springIdx = getSprings(regionId).map((s) => cellIndexAt(regionId, s.lat, s.lng)).filter((i) => i >= 0);
+  const hits = springIdx.filter((i) => classes[i] <= 1).length;
+  let wins = 0;
+  for (const i of springIdx) for (const sc of scores) wins += scores[i] > sc ? 1 : scores[i] === sc ? 0.5 : 0;
+  const auc = springIdx.length ? wins / (springIdx.length * scores.length) : 0;
+  const rounded = areaByClass.map((a) => Math.round(a * 10) / 10);
+  const diff = Math.round((REGIONS[regionId].areaSqKm - rounded.reduce((a, b) => a + b, 0)) * 10) / 10;
+  rounded[2] = Math.round((rounded[2] + diff) * 10) / 10;
   return {
     regionId, model, weights, scores, classes,
-    areaByClass: areaByClass.map((a) => Math.round(a * 10) / 10),
+    areaByClass: rounded,
     importance,
-    accuracy: model === "rf" ? 0.86 : 0.79,
-    auc: model === "rf" ? 0.91 : 0.83,
+    accuracy: springIdx.length ? hits / springIdx.length : 0,
+    auc: Math.round(auc * 100) / 100,
     runAt: new Date().toISOString(),
   };
 }
