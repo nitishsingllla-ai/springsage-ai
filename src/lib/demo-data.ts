@@ -274,7 +274,7 @@ export function runRecharge(regionId: RegionId, model: "ahp" | "rf", weights: We
     let s = 0;
     for (const k of Object.keys(weights) as FactorKey[]) s += c.f[k] * weights[k];
     s /= total;
-    if (model === "rf") s = s * 0.8 + 0.2 * (c.f.lineament * c.f.slope); // nonlinear interaction
+    if (model === "rf") s = s * 0.8 + 0.2 * Math.sqrt(c.f.lineament * c.f.slope); // nonlinear interaction
     return s;
   });
   // Fixed score breaks, so zone areas respond to weight and model changes.
