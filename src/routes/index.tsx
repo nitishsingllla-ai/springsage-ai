@@ -31,7 +31,7 @@ function Overview() {
   const kpis = [
     { label: "Total Springs Mapped", value: m.springs, icon: Droplets, tone: "text-water" },
     { label: "Critical Springs at Risk", value: m.critical, icon: AlertTriangle, tone: "text-risk" },
-    { label: "High Recharge Potential", value: `${m.highRechargeSqKm} sq km`, icon: Mountain, tone: "text-primary" },
+    { label: "High Recharge Potential", value: `${Math.round((analysis.areaByClass[0] + analysis.areaByClass[1]) * 10) / 10} sq km`, icon: Mountain, tone: "text-primary" },
     { label: "Recommended Interventions", value: m.interventions, icon: Hammer, tone: "text-warning-foreground" },
     { label: "Community Reliance", value: `${m.reliance.toLocaleString("en-IN")} people`, icon: Users, tone: "text-primary" },
     { label: "Seasonal Discharge Trend", value: `${m.dischargeTrend}%`, sub: "vs 5-yr baseline", icon: TrendingDown, tone: "text-risk" },

@@ -20,6 +20,13 @@ export interface Survey {
   status: "Pending" | "Approved" | "Rejected";
 }
 
+export interface UploadedFeature { lat: number; lng: number; name: string; value?: number | undefined; props: Record<string, unknown> }
+export interface UploadedDataset {
+  id: string; name: string; regionId: RegionId; kind: "springs" | "observations" | "boreholes";
+  format: "GeoJSON" | "CSV"; features: UploadedFeature[]; visible: boolean; uploadedAt: string;
+  valueLabel?: string | undefined;
+}
+
 export interface Notice { id: string; text: string; t: string; read: boolean }
 
 interface Store {
@@ -38,6 +45,10 @@ interface Store {
   notify: (text: string) => void;
   markRead: () => void;
   online: boolean;
+  uploads: UploadedDataset[];
+  addUpload: (d: UploadedDataset) => void;
+  removeUpload: (id: string) => void;
+  toggleUpload: (id: string) => void;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -59,6 +70,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     { id: "n2", text: "2 field surveys awaiting approval", t: "Yesterday", read: false },
   ]);
   const [online, setOnline] = useState(true);
+  const [uploads, setUploads] = useState<UploadedDataset[]>([]);
 
   useEffect(() => {
     try {
@@ -68,7 +80,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (d.region) setRegionState(d.region);
         if (d.surveys) setSurveys(d.surveys);
         if (typeof d.demoMode === "boolean") setDemoMode(d.demoMode);
-        if (d.region) setAnalysis(runRecharge(d.region, "ahp", DEFAULT_WEIGHTS));
+        if (d.uploads) setUploads(d.uploads);
+        const w = d.weights ?? DEFAULT_WEIGHTS;
+        if (d.weights) setWeights(d.weights);
+        setAnalysis(runRecharge(d.region ?? "himalayan", d.model === "rf" ? "rf" : "ahp", w));
       }
     } catch {}
     setOnline(navigator.onLine);
@@ -79,8 +94,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    try { localStorage.setItem("springsage", JSON.stringify({ region, surveys, demoMode })); } catch {}
-  }, [region, surveys, demoMode]);
+    try { localStorage.setItem("springsage", JSON.stringify({ region, surveys, demoMode, uploads, weights, model: analysis.model })); } catch {}
+  }, [region, surveys, demoMode, uploads, weights, analysis.model]);
 
   const setRegion = (r: RegionId) => {
     setRegionState(r);
@@ -93,6 +108,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       region, setRegion, demoMode, setDemoMode, weights, setWeights, analysis, setAnalysis,
       surveys, addSurvey: (s) => setSurveys((x) => [s, ...x]),
       updateSurvey: (id, status) => setSurveys((x) => x.map((s) => (s.id === id ? { ...s, status } : s))),
+      uploads, addUpload: (d) => setUploads((x) => [d, ...x]),
+      removeUpload: (id) => setUploads((x) => x.filter((d) => d.id !== id)),
+      toggleUpload: (id) => setUploads((x) => x.map((d) => (d.id === id ? { ...d, visible: !d.visible } : d))),
       notices, notify, markRead: () => setNotices((n) => n.map((x) => ({ ...x, read: true }))), online,
     }}>
       {children}

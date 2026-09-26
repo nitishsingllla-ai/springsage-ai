@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Play, RotateCcw, Info, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
@@ -40,6 +40,7 @@ function Analysis() {
     toast.success(`Assessment complete · ${high} sq km High/Very High potential`);
   };
 
+  useEffect(() => { setModel(analysis.model); setW(analysis.weights); }, [region]); // eslint-disable-line react-hooks/exhaustive-deps
   const areaTotal = analysis.areaByClass.reduce((a, b) => a + b, 0);
 
   return (
@@ -73,10 +74,10 @@ function Analysis() {
                   <div className="mt-1 h-1.5 rounded-full bg-muted"><div className="h-full rounded-full" style={{ width: `${(analysis.areaByClass[i] / areaTotal) * 100}%`, background: c.color }} /></div>
                 </div>))}</div>
               <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-                <div className="rounded-lg bg-muted p-2.5">Validation accuracy<div className="text-lg font-extrabold">{Math.round(analysis.accuracy * 100)}%</div></div>
+                <div className="rounded-lg bg-muted p-2.5">Springs in High/VH zones<div className="text-lg font-extrabold">{Math.round(analysis.accuracy * 100)}%</div></div>
                 <div className="rounded-lg bg-muted p-2.5">ROC-AUC<div className="text-lg font-extrabold">{analysis.auc}</div></div>
               </div>
-              <p className="mt-2 text-[11px] text-muted-foreground">Metrics are illustrative for the demo model, against synthetic spring locations.</p>
+              <p className="mt-2 text-[11px] text-muted-foreground">Share of known springs that fall in High or Very High cells, and how well scores rank spring cells above others (ROC-AUC). Computed on synthetic springs.</p>
             </Panel>
             <Panel title="Feature importance" action={<button onClick={() => setExplain(true)} className="flex items-center gap-1 text-xs font-semibold text-primary"><Info className="size-3.5" />Explain model</button>}>
               <div className="h-60"><ResponsiveContainer><BarChart data={analysis.importance} layout="vertical" margin={{ left: 20 }}>
@@ -97,7 +98,7 @@ function Analysis() {
                 </button>))}
             </div>
             <div className="mt-5 flex items-center justify-between text-sm font-semibold">Factor weights
-              <span className={"text-xs " + (total === 100 ? "text-primary" : "text-warning-foreground")}>Σ {total} {total !== 100 && "(normalised)"}</span></div>
+              <span className={"text-xs " + (total === 100 ? "text-primary" : "text-warning-foreground")}>Σ {total} {total !== 100 && "· weights are rescaled to 100%"}</span></div>
             <div className="mt-3 space-y-4">{FACTORS.map((f) => (
               <div key={f.key} title={f.desc}>
                 <div className="mb-1.5 flex justify-between text-xs"><span>{f.label}</span><b>{w[f.key]}</b></div>
@@ -107,6 +108,9 @@ function Analysis() {
               <Button className="flex-1" onClick={run} disabled={running}>{running ? <Loader2 className="animate-spin" /> : <Play />}Run Recharge Assessment</Button>
               <Button variant="outline" size="icon" onClick={() => setW(DEFAULT_WEIGHTS)} aria-label="Reset weights"><RotateCcw /></Button>
             </div>
+            {!running && (model !== analysis.model || JSON.stringify(w) !== JSON.stringify(analysis.weights)) && (
+              <p className="mt-3 rounded-md bg-warning/10 p-2 text-[11px] text-warning-foreground">You've changed settings. The map and statistics still show the last run — press Run to update them.</p>
+            )}
             <p className="mt-3 text-[11px] text-muted-foreground">Last run: {new Date(analysis.runAt).toLocaleString()} · {analysis.model === "ahp" ? "AHP" : "RF"}</p>
           </Panel>
           <Button variant="outline" className="w-full" asChild><Link to="/interventions">Translate zones into interventions →</Link></Button>
@@ -119,7 +123,7 @@ function Analysis() {
           <div className="space-y-4 px-4 pb-6 text-sm text-muted-foreground">
             <p><b className="text-foreground">AHP (Analytic Hierarchy Process):</b> each factor raster is reclassified to a 0–1 suitability score, then combined as a weighted linear sum: <i>RPI = Σ wᵢ·xᵢ / Σ wᵢ</i>. Weights come from the sliders (expert pairwise judgement).</p>
             <p><b className="text-foreground">Random Forest / Ensemble:</b> trained on known spring and non-spring points; captures interactions such as fractured rock on gentle slopes. The demo engine simulates this with a lineament × slope interaction term.</p>
-            <p><b className="text-foreground">Classification:</b> scores are split by quantile breaks into Very High (top 12%), High, Moderate, Low and Very Low.</p>
+            <p><b className="text-foreground">Classification:</b> scores (0–100) are split by fixed breaks: Very High ≥ 62, High ≥ 56, Moderate ≥ 48, Low ≥ 40, otherwise Very Low. Zone areas therefore change when you change weights or model.</p>
             <div className="space-y-2">{FACTORS.map((f) => <div key={f.key} className="rounded-lg border p-2.5"><b className="text-foreground">{f.label}.</b> {f.desc}</div>)}</div>
             <p className="rounded-lg bg-warning/10 p-3 text-warning-foreground">Outputs are probabilistic screening results on synthetic data. Field validation by a hydrogeologist is required before siting any structure.</p>
           </div>

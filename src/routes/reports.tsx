@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useStore, download } from "@/lib/store";
 import { CLASSES, REGIONS, getSprings } from "@/lib/demo-data";
 import { meta } from "@/lib/meta";
+import { ExportBuilder } from "@/components/ExportBuilder";
 
 export const Route = createFileRoute("/reports")({
   head: () => meta("Reports & Export", "Generate springshed summary reports and export springs and recharge zones as GeoJSON or CSV."),
@@ -31,6 +32,7 @@ function Reports() {
   return (
     <div>
       <PageHeader title="Reports, Data Export & Audit" subtitle={`Exports for ${reg.name}. All files are labelled as demonstration data.`} />
+      <Panel title="Custom export" className="mb-4"><ExportBuilder /></Panel>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{items.map((i) => (
         <Panel key={i.title}><i.icon className="size-6 text-primary" /><div className="mt-3 font-bold">{i.title}</div><p className="mb-4 text-sm text-muted-foreground">{i.desc}</p><Button variant="outline" onClick={i.go}>Generate</Button></Panel>))}</div>
     </div>

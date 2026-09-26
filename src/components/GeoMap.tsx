@@ -6,6 +6,10 @@ import {
   type AnalysisResult, type Intervention, type RegionId, type Spring,
 } from "@/lib/demo-data";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Loader2 } from "lucide-react";
+import type { UploadedDataset } from "@/lib/store";
+
+export const UPLOAD_COLORS = ["#8E44AD", "#D35400", "#16A085", "#2C3E50", "#C0392B"];
 
 export type LayerKey =
   | "springs" | "contours" | "streams" | "lineaments" | "lulc" | "geology" | "recharge" | "interventions" | "boundary";
@@ -43,6 +47,10 @@ interface Props {
   measuring?: boolean;
   onMeasure?: (km: number) => void;
   selectedId?: string | undefined;
+  uploads?: UploadedDataset[];
+  inspecting?: boolean;
+  onInspect?: (lat: number, lng: number) => void;
+  inspectPoint?: [number, number] | null;
   className?: string;
   mapRef?: (api: { recenter: () => void; zoomIn: () => void; zoomOut: () => void }) => void;
 }
@@ -58,6 +66,7 @@ export function GeoMap(p: Props) {
   const cbs = useRef(p);
   cbs.current = p;
   const [ready, setReady] = useState(false);
+  const [tilesLoading, setTilesLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,7 +92,8 @@ export function GeoMap(p: Props) {
           let d = 0;
           for (let i = 1; i < pts.length; i++) d += pts[i - 1].distanceTo(pts[i]);
           cbs.current.onMeasure?.(d / 1000);
-        } else cbs.current.onMapClick?.();
+        } else if (cbs.current.inspecting) cbs.current.onInspect?.(e.latlng.lat, e.latlng.lng);
+        else cbs.current.onMapClick?.();
       });
       cbs.current.mapRef?.({
         recenter: () => m.flyTo(REGIONS[cbs.current.regionId].center, 13),
@@ -108,6 +118,9 @@ export function GeoMap(p: Props) {
     tiles.current?.remove();
     const t = TILES[p.basemap ?? "terrain"];
     tiles.current = L.current.tileLayer(t.url, { attribution: t.attr, maxZoom: 17 }).addTo(map.current);
+    setTilesLoading(true);
+    tiles.current.on("loading", () => setTilesLoading(true));
+    tiles.current.on("load", () => setTilesLoading(false));
     tiles.current.bringToBack();
   }, [ready, p.basemap]);
 
@@ -148,21 +161,41 @@ export function GeoMap(p: Props) {
         icon: Lf.divIcon({ className: "", html: `<div class="ss-iv">${st.label[0]}</div>`, iconSize: [20, 20] }),
       }).bindTooltip(`${iv.id} · ${st.label} (${iv.priority})`).addTo(g);
     });
+    (p.uploads ?? []).forEach((d, di) => {
+      if (!d.visible || d.regionId !== p.regionId) return;
+      const col = UPLOAD_COLORS[di % UPLOAD_COLORS.length];
+      d.features.forEach((f) => {
+        const mk = Lf.circleMarker([f.lat, f.lng], { radius: 5, color: col, weight: 2, fillColor: "#fff", fillOpacity: 0.9 })
+          .bindTooltip(`<b>${escapeHtml(f.name)}</b><br/>${escapeHtml(d.name)}${f.value != null ? ` · ${f.value} ${escapeHtml(d.valueLabel ?? "")}` : ""}`);
+        mk.on("click", (e) => { if (cbs.current.inspecting) { Lf.DomEvent.stopPropagation(e); cbs.current.onInspect?.(f.lat, f.lng); } });
+        mk.addTo(g);
+      });
+    });
+    if (p.inspectPoint) Lf.circleMarker(p.inspectPoint, { radius: 9, color: "#10382D", weight: 3, fill: false, dashArray: "3 3" }).addTo(g);
     if (on.springs) p.springs.forEach((s) => {
       const sel = s.id === p.selectedId;
       const m = Lf.circleMarker([s.lat, s.lng], {
         radius: sel ? 10 : 7, color: sel ? "#10382D" : "#fff", weight: sel ? 3 : 2,
         fillColor: STATUS_META[s.status].color, fillOpacity: 0.95,
       }).bindTooltip(`<b>${s.name}</b><br/>${s.dischargeLpm} LPM · ${STATUS_META[s.status].label}`);
-      m.on("click", (e) => { Lf.DomEvent.stopPropagation(e); cbs.current.onSpringClick?.(s); });
+      m.on("click", (e) => { Lf.DomEvent.stopPropagation(e); if (cbs.current.inspecting) cbs.current.onInspect?.(s.lat, s.lng); else cbs.current.onSpringClick?.(s); });
       m.addTo(g);
     });
-  }, [ready, p.regionId, p.layers, p.opacity, p.analysis, p.springs, p.interventions, p.selectedId]);
+  }, [ready, p.regionId, p.layers, p.opacity, p.analysis, p.springs, p.interventions, p.selectedId, p.uploads, p.inspectPoint]);
 
   return (
     <div className={"relative overflow-hidden " + (p.className ?? "")}>
-      <div ref={el} className={"absolute inset-0 " + (p.measuring ? "cursor-crosshair" : "")} />
+      <div ref={el} className={"absolute inset-0 " + (p.measuring || p.inspecting ? "cursor-crosshair" : "")} />
       {!ready && <Skeleton className="absolute inset-0 rounded-none" />}
+      {ready && tilesLoading && (
+        <div className="pointer-events-none absolute left-1/2 top-3 z-[550] flex -translate-x-1/2 items-center gap-1.5 rounded-full border bg-card/95 px-3 py-1 text-xs font-semibold shadow">
+          <Loader2 className="size-3.5 animate-spin text-primary" />Loading map tiles…
+        </div>
+      )}
     </div>
   );
+}
+
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
