@@ -20,11 +20,11 @@ export interface Survey {
   status: "Pending" | "Approved" | "Rejected";
 }
 
-export interface UploadedFeature { lat: number; lng: number; name: string; value?: number; props: Record<string, unknown> }
+export interface UploadedFeature { lat: number; lng: number; name: string; value?: number | undefined; props: Record<string, unknown> }
 export interface UploadedDataset {
   id: string; name: string; regionId: RegionId; kind: "springs" | "observations" | "boreholes";
   format: "GeoJSON" | "CSV"; features: UploadedFeature[]; visible: boolean; uploadedAt: string;
-  valueLabel?: string;
+  valueLabel?: string | undefined;
 }
 
 export interface Notice { id: string; text: string; t: string; read: boolean }
