@@ -33,6 +33,9 @@ function CrossSectionPage() {
   const metrics = useMemo(() => transectMetrics(active, samples), [active, samples]);
   const selectedSpring = springs.find((spring) => spring.id === active.springId);
   const chartData = samples.map((sample) => ({ ...sample, water: sample.waterTable }));
+  const chartMin = Math.floor((Math.min(...samples.map((sample) => sample.waterTable)) - 40) / 100) * 100;
+  const chartMax = Math.ceil((Math.max(...samples.map((sample) => sample.elevation)) + 40) / 100) * 100;
+  const slopeMarkers = [0.25, 0.5, 0.75].map((fraction) => samples[Math.round((samples.length - 1) * fraction)]).filter((sample): sample is TransectSample => Boolean(sample));
   const lithology = REGIONS[region].lithology;
 
   const chooseSpring = (springId: string) => {
@@ -133,7 +136,7 @@ function CrossSectionPage() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="distanceKm" type="number" domain={[0, "dataMax"]} tickFormatter={(value) => `${Number(value).toFixed(1)} km`} fontSize={10} />
-                <YAxis domain={["dataMin - 80", "dataMax + 40"]} fontSize={10} width={46} />
+                <YAxis domain={[chartMin, chartMax]} tickFormatter={(value) => `${Math.round(Number(value))}`} fontSize={10} width={46} />
                 <Tooltip formatter={(value, name) => [`${Math.round(Number(value))} m`, name === "elevation" ? "Surface" : "Water table"]} labelFormatter={(value) => `${Number(value).toFixed(2)} km from ridge`} />
                 <Area type="monotone" dataKey="elevation" stroke="var(--primary)" strokeWidth={2} fill="url(#surfaceFill)" />
                 {showWater && <Area type="monotone" dataKey="water" stroke="var(--water)" strokeWidth={2} fill="transparent" strokeDasharray="6 4" />}
@@ -141,6 +144,11 @@ function CrossSectionPage() {
               </AreaChart>
             </ResponsiveContainer>
           </div>
+          <div className="mt-3 grid grid-cols-3 gap-2">{slopeMarkers.map((sample) => (
+            <button key={sample.distanceKm} onClick={() => setSelectedSample(sample)} className="rounded-md border bg-muted/60 px-2 py-1.5 text-left text-[11px] hover:bg-accent">
+              <span className="text-muted-foreground">{sample.distanceKm.toFixed(1)} km</span><span className="ml-1.5 font-bold">{Math.abs(sample.slopeDeg).toFixed(1)}° slope</span>
+            </button>
+          ))}</div>
           <div className="mt-2 flex justify-between text-[11px] text-muted-foreground"><span>Ridge / catchment divide</span><span>Spring eye</span></div>
         </Panel>
         <Panel title="Geological layers">
