@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
 import { CLASSES, LULC, GEOLOGY_COLORS, REGIONS, STATUS_META, FACTORS, STRUCTURES, cellIndexAt, getGrid, getInterventions, getSprings, type SpringStatus } from "@/lib/demo-data";
 import { meta } from "@/lib/meta";
-import { representativeTransect, transectMetrics, type LatLng } from "@/lib/transect";
+import { representativeTransect, transectMetrics } from "@/lib/transect";
+import type { LatLng } from "@/lib/demo-data";
 
 export const Route = createFileRoute("/explorer")({
   validateSearch: z.object({ spring: z.string().optional() }),
