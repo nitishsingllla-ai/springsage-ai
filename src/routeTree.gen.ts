@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnalysisRouteImport } from './routes/analysis'
+import { Route as CrossSectionRouteImport } from './routes/cross-section'
 import { Route as DataSourcesRouteImport } from './routes/data-sources'
 import { Route as ExplorerRouteImport } from './routes/explorer'
 import { Route as InterventionsRouteImport } from './routes/interventions'
@@ -27,6 +28,11 @@ const IndexRoute = IndexRouteImport.update({
 const AnalysisRoute = AnalysisRouteImport.update({
   id: '/analysis',
   path: '/analysis',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrossSectionRoute = CrossSectionRouteImport.update({
+  id: '/cross-section',
+  path: '/cross-section',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DataSourcesRoute = DataSourcesRouteImport.update({
@@ -68,6 +74,7 @@ const SurveysRoute = SurveysRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analysis': typeof AnalysisRoute
+  '/cross-section': typeof CrossSectionRoute
   '/data-sources': typeof DataSourcesRoute
   '/explorer': typeof ExplorerRoute
   '/interventions': typeof InterventionsRoute
@@ -79,6 +86,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analysis': typeof AnalysisRoute
+  '/cross-section': typeof CrossSectionRoute
   '/data-sources': typeof DataSourcesRoute
   '/explorer': typeof ExplorerRoute
   '/interventions': typeof InterventionsRoute
@@ -91,6 +99,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/analysis': typeof AnalysisRoute
+  '/cross-section': typeof CrossSectionRoute
   '/data-sources': typeof DataSourcesRoute
   '/explorer': typeof ExplorerRoute
   '/interventions': typeof InterventionsRoute
@@ -104,6 +113,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/analysis'
+    | '/cross-section'
     | '/data-sources'
     | '/explorer'
     | '/interventions'
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/analysis'
+    | '/cross-section'
     | '/data-sources'
     | '/explorer'
     | '/interventions'
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/analysis'
+    | '/cross-section'
     | '/data-sources'
     | '/explorer'
     | '/interventions'
@@ -138,6 +150,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalysisRoute: typeof AnalysisRoute
+  CrossSectionRoute: typeof CrossSectionRoute
   DataSourcesRoute: typeof DataSourcesRoute
   ExplorerRoute: typeof ExplorerRoute
   InterventionsRoute: typeof InterventionsRoute
@@ -161,6 +174,13 @@ declare module '@tanstack/react-router' {
       path: '/analysis'
       fullPath: '/analysis'
       preLoaderRoute: typeof AnalysisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cross-section': {
+      id: '/cross-section'
+      path: '/cross-section'
+      fullPath: '/cross-section'
+      preLoaderRoute: typeof CrossSectionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/data-sources': {
@@ -218,6 +238,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalysisRoute: AnalysisRoute,
+  CrossSectionRoute: CrossSectionRoute,
   DataSourcesRoute: DataSourcesRoute,
   ExplorerRoute: ExplorerRoute,
   InterventionsRoute: InterventionsRoute,

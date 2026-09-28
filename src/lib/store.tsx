@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { DEFAULT_WEIGHTS, runRecharge, type AnalysisResult, type RegionId, type Weights } from "./demo-data";
+import { representativeTransect, type Transect } from "./transect";
 
 export interface Survey {
   id: string;
@@ -49,6 +50,8 @@ interface Store {
   addUpload: (d: UploadedDataset) => void;
   removeUpload: (id: string) => void;
   toggleUpload: (id: string) => void;
+  transect: Transect;
+  setTransect: (transect: Transect) => void;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -71,6 +74,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   ]);
   const [online, setOnline] = useState(true);
   const [uploads, setUploads] = useState<UploadedDataset[]>([]);
+  const [transect, setTransect] = useState<Transect>(() => representativeTransect("himalayan"));
 
   useEffect(() => {
     try {
@@ -81,6 +85,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (d.surveys) setSurveys(d.surveys);
         if (typeof d.demoMode === "boolean") setDemoMode(d.demoMode);
         if (d.uploads) setUploads(d.uploads);
+        if (d.transect?.regionId === (d.region ?? "himalayan")) setTransect(d.transect);
         const w = d.weights ?? DEFAULT_WEIGHTS;
         if (d.weights) setWeights(d.weights);
         setAnalysis(runRecharge(d.region ?? "himalayan", d.model === "rf" ? "rf" : "ahp", w));
@@ -94,12 +99,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    try { localStorage.setItem("springsage", JSON.stringify({ region, surveys, demoMode, uploads, weights, model: analysis.model })); } catch {}
-  }, [region, surveys, demoMode, uploads, weights, analysis.model]);
+    try { localStorage.setItem("springsage", JSON.stringify({ region, surveys, demoMode, uploads, weights, model: analysis.model, transect })); } catch {}
+  }, [region, surveys, demoMode, uploads, weights, analysis.model, transect]);
 
   const setRegion = (r: RegionId) => {
     setRegionState(r);
     setAnalysis(runRecharge(r, analysis.model, weights));
+    setTransect(representativeTransect(r));
   };
   const notify = (text: string) => setNotices((n) => [{ id: crypto.randomUUID(), text, t: "Just now", read: false }, ...n]);
 
@@ -111,6 +117,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       uploads, addUpload: (d) => setUploads((x) => [d, ...x]),
       removeUpload: (id) => setUploads((x) => x.filter((d) => d.id !== id)),
       toggleUpload: (id) => setUploads((x) => x.map((d) => (d.id === id ? { ...d, visible: !d.visible } : d))),
+      transect, setTransect,
       notices, notify, markRead: () => setNotices((n) => n.map((x) => ({ ...x, read: true }))), online,
     }}>
       {children}

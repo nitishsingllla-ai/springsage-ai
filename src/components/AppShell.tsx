@@ -1,7 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState, type ReactNode } from "react";
 import {
-  LayoutDashboard, Map, Layers, Hammer, Activity, ClipboardList, FileDown, Database, Settings,
+  LayoutDashboard, Map, Layers, Hammer, Activity, ClipboardList, FileDown, Database, Settings, Mountain,
   Search, Bell, HelpCircle, Droplets, Menu, ChevronRight, MapPin, User,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
@@ -17,6 +17,7 @@ export const NAV = [
   { to: "/", label: "Overview", icon: LayoutDashboard },
   { to: "/explorer", label: "Springshed Explorer", icon: Map },
   { to: "/analysis", label: "Recharge Analysis", icon: Layers },
+  { to: "/cross-section", label: "Cross-Section", icon: Mountain },
   { to: "/interventions", label: "Intervention Planner", icon: Hammer },
   { to: "/monitoring", label: "Spring Monitoring", icon: Activity },
   { to: "/surveys", label: "Field Surveys", icon: ClipboardList },

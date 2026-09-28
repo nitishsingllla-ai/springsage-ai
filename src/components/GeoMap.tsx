@@ -8,6 +8,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2 } from "lucide-react";
 import type { UploadedDataset } from "@/lib/store";
+import type { Transect } from "@/lib/transect";
 
 export const UPLOAD_COLORS = ["#8E44AD", "#D35400", "#16A085", "#2C3E50", "#C0392B"];
 
@@ -50,6 +51,9 @@ interface Props {
   uploads?: UploadedDataset[];
   inspecting?: boolean;
   onInspect?: (lat: number, lng: number) => void;
+  drawingTransect?: boolean;
+  onTransectClick?: (lat: number, lng: number) => void;
+  transect?: Transect | null;
   inspectPoint?: [number, number] | null;
   className?: string;
   mapRef?: (api: { recenter: () => void; zoomIn: () => void; zoomOut: () => void }) => void;
@@ -83,7 +87,8 @@ export function GeoMap(p: Props) {
       overlay.current = Lf.layerGroup().addTo(m);
       measureGroup.current = Lf.layerGroup().addTo(m);
       m.on("click", (e: Leaflet.LeafletMouseEvent) => {
-        if (cbs.current.measuring) {
+        if (cbs.current.drawingTransect) cbs.current.onTransectClick?.(e.latlng.lat, e.latlng.lng);
+        else if (cbs.current.measuring) {
           measurePts.current.push(e.latlng);
           const pts = measurePts.current;
           measureGroup.current!.clearLayers();
@@ -137,6 +142,13 @@ export function GeoMap(p: Props) {
     const on = p.layers;
     const op = p.opacity ?? 0.55;
 
+    if (p.transect?.regionId === p.regionId) {
+      const points: Leaflet.LatLngExpression[] = [p.transect.start, p.transect.end];
+      Lf.polyline(points, { color: "#C9564D", weight: 4, dashArray: "10 7", opacity: 0.95 }).bindTooltip("Hydrogeological transect").addTo(g);
+      Lf.circleMarker(p.transect.start, { radius: 7, color: "#10382D", weight: 3, fillColor: "#F6F7F2", fillOpacity: 1 }).bindTooltip("Ridge / recharge divide").addTo(g);
+      Lf.circleMarker(p.transect.end, { radius: 7, color: "#3999C6", weight: 3, fillColor: "#F6F7F2", fillOpacity: 1 }).bindTooltip("Spring eye / transect end").addTo(g);
+    }
+
     if (on.lulc) sectors(reg, 5).forEach((poly, i) =>
       Lf.polygon(poly, { color: LULC[i % 4].color, weight: 0, fillOpacity: 0.35 }).bindTooltip(LULC[i % 4].label).addTo(g));
     if (on.geology) sectors(reg, 4).forEach((poly, i) =>
@@ -181,11 +193,11 @@ export function GeoMap(p: Props) {
       m.on("click", (e) => { Lf.DomEvent.stopPropagation(e); if (cbs.current.inspecting) cbs.current.onInspect?.(s.lat, s.lng); else cbs.current.onSpringClick?.(s); });
       m.addTo(g);
     });
-  }, [ready, p.regionId, p.layers, p.opacity, p.analysis, p.springs, p.interventions, p.selectedId, p.uploads, p.inspectPoint]);
+  }, [ready, p.regionId, p.layers, p.opacity, p.analysis, p.springs, p.interventions, p.selectedId, p.uploads, p.inspectPoint, p.transect]);
 
   return (
     <div className={"relative overflow-hidden " + (p.className ?? "")}>
-      <div ref={el} className={"absolute inset-0 " + (p.measuring || p.inspecting ? "cursor-crosshair" : "")} />
+      <div ref={el} className={"absolute inset-0 " + (p.measuring || p.inspecting || p.drawingTransect ? "cursor-crosshair" : "")} />
       {!ready && <Skeleton className="absolute inset-0 rounded-none" />}
       {ready && tilesLoading && (
         <div className="pointer-events-none absolute left-1/2 top-3 z-[550] flex -translate-x-1/2 items-center gap-1.5 rounded-full border bg-card/95 px-3 py-1 text-xs font-semibold shadow">
