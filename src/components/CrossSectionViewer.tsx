@@ -33,7 +33,7 @@ function scaled(samples: TransectSample[], exaggeration: number) {
   }));
 }
 
-function SurfaceRibbon({ points, onSampleSelect }: { points: ReturnType<typeof scaled>; onSampleSelect?: (sample: TransectSample) => void }) {
+function SurfaceRibbon({ points, onSampleSelect }: { points: ReturnType<typeof scaled>; onSampleSelect: ((sample: TransectSample) => void) | undefined }) {
   const geometry = useMemo(() => {
     const positions: number[] = [];
     const indices: number[] = [];
