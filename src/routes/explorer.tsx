@@ -197,9 +197,3 @@ function Explorer() {
   );
 }
 
-function LegendGroup({ title, children }: { title: string; children: ReactNode }) {
-  return <div className="mb-2 last:mb-0"><div className="mb-0.5 font-semibold text-muted-foreground">{title}</div>{children}</div>;
-}
-function Row({ sw, children }: { sw: ReactNode; children: ReactNode }) {
-  return <div className="flex items-center gap-1.5"><span className="grid w-3.5 place-items-center">{sw}</span><span className="truncate">{children}</span></div>;
-}
