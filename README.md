@@ -1,8 +1,9 @@
-# SpringWatch AI
+# SpringSage AI
 
-Please build the complete SpringSage AI application according to the attached specification:
+> **Live Website**: [https://springsage-ai.vercel.app](https://springsage-ai.vercel.app)
+> **GitHub**: [https://github.com/nitishsingllla-ai/springsage-ai](https://github.com/nitishsingllla-ai/springsage-ai)
 
-# PROJECT: SPRINGSAGE AI
+---
 
 ## Build a complete, functional, premium-quality AI-powered geospatial web application
 
@@ -185,10 +186,9 @@ Comprehensive export hub:
 
 Include realistic hydrological and geospatial demo data for Himalayan and Central Indian tribal springsheds.
 
-Build the complete, functional application with polished UI, realistic mock data, and smooth navigation.
-
-## Repository
-GitHub: [springsage-ai](https://github.com/nitishsingllla-ai/springsage-ai)
+## Links
+- **Live Website**: [https://springsage-ai.vercel.app](https://springsage-ai.vercel.app)
+- **GitHub Repository**: [https://github.com/nitishsingllla-ai/springsage-ai](https://github.com/nitishsingllla-ai/springsage-ai)
 
 ## Development
 
