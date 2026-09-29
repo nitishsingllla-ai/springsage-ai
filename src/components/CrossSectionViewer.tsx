@@ -31,7 +31,7 @@ const WATER = "#3999C6";
 const SURFACE = "#3C7651";
 const FRACTURE = "#C9564D";
 
-type Scaled = ReturnType<typeof scaled>;
+type Scaled = ReturnType<typeof scaled>[number];
 
 function scaled(samples: TransectSample[], exaggeration: number) {
   const min = Math.min(...samples.map((item) => item.waterTable)) - 155;
