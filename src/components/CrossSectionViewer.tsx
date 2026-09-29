@@ -182,7 +182,7 @@ function RidgeSpringMarks({ points }: { points: Scaled[] }) {
   return <>{mark(start, "#10382D", "ridge")}{end && mark(end, WATER, "spring")}</>;
 }
 
-function Controls({ spin, apiRef }: { spin: boolean; apiRef?: (api: ViewerApi) => void }) {
+function Controls({ spin, apiRef }: { spin: boolean; apiRef?: ((api: ViewerApi) => void) | undefined }) {
   const controlsRef = useRef<any>(null);
   const camera = useThree((state) => state.camera);
   useEffect(() => {
