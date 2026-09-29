@@ -187,17 +187,8 @@ Include realistic hydrological and geospatial demo data for Himalayan and Centra
 
 Build the complete, functional application with polished UI, realistic mock data, and smooth navigation.
 
-This project was built with [Lovable](https://lovable.dev).
-
-**Live app**: https://springsage-watershed-mapper.lovable.app
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/e33c934a-7a31-4a40-be0f-2189d2316f33).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+## Repository
+GitHub: [springsage-ai](https://github.com/nitishsingllla-ai/springsage-ai)
 
 ## Development
 
