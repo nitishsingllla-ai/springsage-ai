@@ -129,22 +129,6 @@ function Explorer() {
               <button key={b} onClick={() => setBasemap(b)} className={"rounded-md px-2.5 py-1 capitalize " + (basemap === b ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>{b}</button>
             ))}
           </div>
-          <div className="absolute bottom-3 right-3 z-[500] max-h-[55%] w-[210px] overflow-y-auto rounded-lg border bg-card/95 p-3 text-[11px] shadow">
-            <div className="mb-1.5 font-bold">Legend</div>
-            {layers.springs && <LegendGroup title="Springs">{Object.values(STATUS_META).map((s) => <Row key={s.label} sw={<span className="size-2.5 rounded-full" style={{ background: s.color }} />}>{s.label}</Row>)}</LegendGroup>}
-            {layers.recharge && <LegendGroup title={`Recharge potential (${analysis.model === "ahp" ? "AHP" : "RF"})`}>{CLASSES.map((c) => <Row key={c.key} sw={<span className="size-2.5 rounded-sm" style={{ background: c.color }} />}>{c.label}</Row>)}</LegendGroup>}
-            {layers.lulc && <LegendGroup title="Land use">{LULC.map((c) => <Row key={c.label} sw={<span className="size-2.5 rounded-sm" style={{ background: c.color }} />}>{c.label}</Row>)}</LegendGroup>}
-            {layers.geology && <LegendGroup title="Lithology">{REGIONS[region].lithology.map((l, i) => <Row key={l} sw={<span className="size-2.5 rounded-sm" style={{ background: GEOLOGY_COLORS[i] }} />}>{l}</Row>)}</LegendGroup>}
-            {(layers.streams || layers.contours || layers.lineaments || layers.boundary) && <LegendGroup title="Lines">
-              {layers.streams && <Row sw={<span className="h-0.5 w-3" style={{ background: "#3999C6" }} />}>Stream</Row>}
-              {layers.contours && <Row sw={<span className="h-px w-3" style={{ background: "#7a5a3a" }} />}>Contour (m)</Row>}
-              {layers.lineaments && <Row sw={<span className="w-3 border-t-2 border-dashed" style={{ borderColor: "#C9564D" }} />}>Lineament</Row>}
-              {layers.boundary && <Row sw={<span className="w-3 border-t-2 border-dashed" style={{ borderColor: "#174D3A" }} />}>Watershed boundary</Row>}
-            </LegendGroup>}
-            {layers.interventions && <LegendGroup title="Interventions">{STRUCTURES.map((st) => <Row key={st.key} sw={<span className="ss-iv !size-3.5 !text-[8px]">{st.label[0]}</span>}>{st.label}</Row>)}</LegendGroup>}
-            {regionUploads.some((d) => d.visible) && <LegendGroup title="Your datasets">{uploads.map((d, i) => d.visible && d.regionId === region ? <Row key={d.id} sw={<span className="size-2.5 rounded-full border-2 bg-card" style={{ borderColor: UPLOAD_COLORS[i % UPLOAD_COLORS.length] }} />}>{d.name}</Row> : null)}</LegendGroup>}
-            {!Object.values(layers).some(Boolean) && regionUploads.length === 0 && <p className="text-muted-foreground">No layers on.</p>}
-          </div>
         </div>
 
         <aside className="space-y-4">
