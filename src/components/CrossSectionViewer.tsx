@@ -1,24 +1,37 @@
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Line, OrbitControls } from "@react-three/drei";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { REGIONS } from "@/lib/demo-data";
 import { sampleTransect, type Transect, type TransectSample } from "@/lib/transect";
+
+export interface ViewerApi {
+  zoomIn: () => void;
+  zoomOut: () => void;
+  reset: () => void;
+}
 
 interface ViewerProps {
   transect: Transect;
   exaggeration: number;
   showGeology: boolean;
   showWater: boolean;
+  showFractures: boolean;
   animateFlow: boolean;
-  resetKey: number;
+  spin?: boolean;
+  selectedSample?: TransectSample | null;
+  hoverSample?: TransectSample | null;
+  apiRef?: (api: ViewerApi) => void;
   onSampleSelect?: (sample: TransectSample) => void;
+  onSampleHover?: (sample: TransectSample | null) => void;
 }
 
 const GEO_COLORS = ["#A79078", "#82768E", "#728B98", "#B29C55"];
 const WATER = "#3999C6";
 const SURFACE = "#3C7651";
 const FRACTURE = "#C9564D";
+
+type Scaled = ReturnType<typeof scaled>;
 
 function scaled(samples: TransectSample[], exaggeration: number) {
   const min = Math.min(...samples.map((item) => item.waterTable)) - 155;
@@ -33,7 +46,16 @@ function scaled(samples: TransectSample[], exaggeration: number) {
   }));
 }
 
-function SurfaceRibbon({ points, onSampleSelect }: { points: ReturnType<typeof scaled>; onSampleSelect: ((sample: TransectSample) => void) | undefined }) {
+function nearestTo(points: Scaled[], distanceKm: number) {
+  return points.reduce((best, pt) =>
+    Math.abs(pt.distanceKm - distanceKm) < Math.abs(best.distanceKm - distanceKm) ? pt : best, points[0]);
+}
+
+function SurfaceRibbon({ points, onSampleSelect, onSampleHover }: {
+  points: Scaled[];
+  onSampleSelect: ((sample: TransectSample) => void) | undefined;
+  onSampleHover: ((sample: TransectSample | null) => void) | undefined;
+}) {
   const geometry = useMemo(() => {
     const positions: number[] = [];
     const indices: number[] = [];
@@ -49,20 +71,22 @@ function SurfaceRibbon({ points, onSampleSelect }: { points: ReturnType<typeof s
     geo.computeVertexNormals();
     return geo;
   }, [points]);
+  const pick = (event: { point: { x: number } }) => {
+    let best = points[0];
+    for (const point of points) if (best && Math.abs(point.x - event.point.x) < Math.abs(best.x - event.point.x)) best = point;
+    return best;
+  };
   return (
-    <mesh geometry={geometry} receiveShadow castShadow onClick={(event) => {
-      event.stopPropagation();
-      if (!onSampleSelect) return;
-      let best = points[0];
-      for (const point of points) if (best && Math.abs(point.x - event.point.x) < Math.abs(best.x - event.point.x)) best = point;
-      if (best) onSampleSelect(best);
-    }}>
+    <mesh geometry={geometry} receiveShadow castShadow
+      onClick={(event) => { event.stopPropagation(); if (onSampleSelect) onSampleSelect(pick(event)); }}
+      onPointerMove={(event) => { if (onSampleHover) onSampleHover(pick(event)); }}
+      onPointerOut={() => { if (onSampleHover) onSampleHover(null); }}>
       <meshStandardMaterial color={SURFACE} roughness={0.82} metalness={0.02} side={THREE.DoubleSide} />
     </mesh>
   );
 }
 
-function Strata({ points, names }: { points: ReturnType<typeof scaled>; names: string[] }) {
+function Strata({ points, names }: { points: Scaled[]; names: string[] }) {
   const layers = useMemo(() => [0.18, 0.38, 0.62, 0.86].map((fraction, layer) => {
     const shape = new THREE.Shape();
     const topOffset = layer * 0.82 + 0.14;
@@ -86,7 +110,7 @@ function Strata({ points, names }: { points: ReturnType<typeof scaled>; names: s
   ))}</group>;
 }
 
-function FlowParticles({ points, active }: { points: ReturnType<typeof scaled>; active: boolean }) {
+function FlowParticles({ points, active }: { points: Scaled[]; active: boolean }) {
   const refs = useRef<Array<THREE.Mesh | null>>([]);
   const curves = useMemo(() => [0.1, 0.28, 0.46, 0.64].map((start, index) => {
     const startIndex = Math.floor((points.length - 1) * start);
@@ -122,7 +146,69 @@ function FlowParticles({ points, active }: { points: ReturnType<typeof scaled>; 
   ))}</>;
 }
 
-function CrossSectionScene(props: Omit<ViewerProps, "resetKey">) {
+function SampleMarker({ points, sample, tone }: { points: Scaled[]; sample: TransectSample; tone: "selected" | "hover" }) {
+  const point = useMemo(() => nearestTo(points, sample.distanceKm), [points, sample.distanceKm]);
+  if (!point) return null;
+  const color = tone === "selected" ? FRACTURE : WATER;
+  const depth = tone === "selected" ? 2.6 : 1.7;
+  return (
+    <group position={[point.x, point.y + 0.04, 1.45]}>
+      <Line points={[[0, 0, 0], [0, -depth, 0]]} color={color} lineWidth={tone === "selected" ? 2 : 1.4} transparent opacity={tone === "selected" ? 0.85 : 0.5} />
+      <Line points={[[point.x * 0 + -0.09, -depth, 0], [0.09, -depth, 0]]} color={color} lineWidth={2} transparent opacity={0.8} />
+      <mesh>
+        <sphereGeometry args={[tone === "selected" ? 0.11 : 0.07, 14, 10]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.55} />
+      </mesh>
+    </group>
+  );
+}
+
+function RidgeSpringMarks({ points }: { points: Scaled[] }) {
+  const start = points[0];
+  const end = points[points.length - 1];
+  if (!start || !end) return null;
+  const mark = (point: Scaled, color: string, label: string) => (
+    <group key={label} position={[point.x, point.y + 0.05, 1.44]}>
+      <mesh>
+        <cylinderGeometry args={[0.02, 0.02, 0.65, 8]} />
+        <meshStandardMaterial color={color} />
+      </mesh>
+      <mesh position-y={0.4}>
+        <coneGeometry args={[0.09, 0.26, 12]} />
+        <meshStandardMaterial color={color} />
+      </mesh>
+    </group>
+  );
+  return <>{mark(start, "#10382D", "ridge")}{end && mark(end, WATER, "spring")}</>;
+}
+
+function Controls({ spin, apiRef }: { spin: boolean; apiRef?: (api: ViewerApi) => void }) {
+  const controlsRef = useRef<any>(null);
+  const camera = useThree((state) => state.camera);
+  useEffect(() => {
+    const c = controlsRef.current;
+    if (!c || !apiRef) return;
+    c.saveState();
+    const zoom = (factor: number) => {
+      const dir = camera.position.clone().sub(c.target);
+      const dist = THREE.MathUtils.clamp(dir.length() * factor, c.minDistance, c.maxDistance);
+      camera.position.copy(c.target.clone().add(dir.setLength(dist)));
+      c.update();
+    };
+    apiRef({
+      zoomIn: () => zoom(0.82),
+      zoomOut: () => zoom(1.22),
+      reset: () => c.reset(),
+    });
+  }, [apiRef, camera]);
+  return (
+    <OrbitControls ref={controlsRef} makeDefault enableDamping dampingFactor={0.08} target={[0, 2.1, 0]}
+      minDistance={8} maxDistance={31} minPolarAngle={0.55} maxPolarAngle={Math.PI / 2.02}
+      autoRotate={spin} autoRotateSpeed={0.8} />
+  );
+}
+
+function CrossSectionScene(props: ViewerProps) {
   const samples = useMemo(() => sampleTransect(props.transect), [props.transect]);
   const points = useMemo(() => scaled(samples, props.exaggeration), [samples, props.exaggeration]);
   const region = REGIONS[props.transect.regionId];
@@ -135,23 +221,26 @@ function CrossSectionScene(props: Omit<ViewerProps, "resetKey">) {
       <fog attach="fog" args={["#EEF1EA", 24, 42]} />
       <hemisphereLight args={["#DDEAF0", "#8A7966", 1.45]} />
       <directionalLight position={[-7, 12, 8]} intensity={2.2} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
-      <SurfaceRibbon points={points} onSampleSelect={props.onSampleSelect} />
+      <SurfaceRibbon points={points} onSampleSelect={props.onSampleSelect} onSampleHover={props.onSampleHover} />
       {props.showGeology && <Strata points={points} names={region.lithology} />}
       <Line points={surfaceLine} color="#10382D" lineWidth={2.2} />
       {props.showWater && <Line points={waterLine} color={WATER} lineWidth={3} dashed dashScale={8} dashSize={0.35} gapSize={0.2} />}
-      {props.showGeology && [-5.8, -1.8, 2.5, 5.5].map((x, index) => (
+      {props.showFractures && [-5.8, -1.8, 2.5, 5.5].map((x, index) => (
         <mesh key={x} position={[x, 2.25, 1.48]} rotation-z={index % 2 ? -0.42 : 0.5}>
           <boxGeometry args={[0.055, 4.8, 0.035]} />
           <meshStandardMaterial color={FRACTURE} transparent opacity={0.78} />
         </mesh>
       ))}
       <FlowParticles points={points} active={props.animateFlow} />
+      {props.hoverSample && <SampleMarker points={points} sample={props.hoverSample} tone="hover" />}
+      {props.selectedSample && <SampleMarker points={points} sample={props.selectedSample} tone="selected" />}
+      <RidgeSpringMarks points={points} />
       {end && <group position={[end.x, end.y, 0]}>
         <mesh rotation-x={Math.PI / 2}><torusGeometry args={[0.18, 0.055, 10, 24]} /><meshStandardMaterial color={WATER} /></mesh>
         <mesh position={[0.18, -0.12, 0]}><sphereGeometry args={[0.09, 12, 8]} /><meshStandardMaterial color={WATER} /></mesh>
       </group>}
       <gridHelper args={[24, 24, "#AEB9AC", "#D6DDD2"]} position={[0, 0, -1.35]} rotation-x={Math.PI / 2} />
-      <OrbitControls makeDefault enableDamping dampingFactor={0.08} target={[0, 2.1, 0]} minDistance={8} maxDistance={31} minPolarAngle={0.55} maxPolarAngle={Math.PI / 2.02} />
+      <Controls spin={props.spin ?? false} apiRef={props.apiRef} />
     </>
   );
 }
@@ -159,7 +248,7 @@ function CrossSectionScene(props: Omit<ViewerProps, "resetKey">) {
 export function CrossSectionViewer(props: ViewerProps) {
   return (
     <div className="h-full min-h-[430px] w-full overflow-hidden rounded-lg bg-muted" aria-label="Interactive 3D hydrogeological cross-section">
-      <Canvas key={props.resetKey} shadows dpr={[1, 1.6]} camera={{ position: [13, 8.5, 14], fov: 43 }} gl={{ antialias: true }}>
+      <Canvas shadows dpr={[1, 1.6]} camera={{ position: [13, 8.5, 14], fov: 43 }} gl={{ antialias: true }}>
         <CrossSectionScene {...props} />
       </Canvas>
     </div>
